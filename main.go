@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 )
 
 func main() {
@@ -14,14 +15,20 @@ func main() {
 
 	flag.Parse()
 
+	var wg sync.WaitGroup
 	for i := *portMin; i <= *portMax; i++ {
-		addr := *host + ":" + strconv.Itoa(i)
-		conn, err := net.Dial("tcp", addr)
-		if err != nil {
-			fmt.Printf("Connection refused for %v on %v\n", *host, i)
-			continue
-		}
-		fmt.Printf("Connection succeeded for %v on %v\n", *host, i)
-		defer conn.Close()
+		wg.Add(i)
+		go func(i int) {
+			addr := *host + ":" + strconv.Itoa(i)
+			conn, err := net.Dial("tcp", addr)
+			if err != nil {
+				fmt.Printf("Connection refused for %v on %v\n", *host, i)
+				return
+			}
+			fmt.Printf("Connection succeeded for %v on %v\n", *host, i)
+			defer conn.Close()
+			defer wg.Done()
+		}(i)
 	}
+	wg.Wait()
 }
